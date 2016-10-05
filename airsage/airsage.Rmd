@@ -6,14 +6,14 @@ output: html_document
 ---
 ```{r, echo = TRUE}
 # User inputs:
-projDir         <- "/Volumes/C/projects/Flagler/airsage"
+projDir         <- "/Users/amarsarvepalli/Desktop/github/Flagler"
 airsage_data    <- c("trip_leg_matrix_cusWDH.csv",
-                      "trip_leg_matrix_cusWDDP.csv",
-                      "trip_leg_submatrix_cusWDDP.csv",
-                      "trip_leg_submatrix_cusWDH.csv")
-airsage_shapeFile <- "airsarge_districts/TAZs.shp"
-airsage_Districts <- "airsarge_districts/Renumber2.txt"
-acs_shapeFile     <- 
+                     "trip_leg_matrix_cusWDDP.csv",
+                     "trip_leg_submatrix_cusWDDP.csv",
+                     "trip_leg_submatrix_cusWDH.csv")
+airsage_shapeFile <- "airsage/airsarge_districts/TAZs.shp"
+airsage_Districts <- "airsage/airsarge_districts/Renumber2.txt"
+acs_shapeFile     <- ""
   
 ```
 
@@ -64,7 +64,7 @@ The following are the list of files received from Airsage along with:
 5) percent of trips
 
 ```{r read data, echo=FALSE, message=FALSE, warning=FALSE}
-  csvFiles <- dir(projDir, pattern = ".csv")
+  csvFiles <- dir(paste(projDir,"/airsage",sep=""), pattern = ".csv")
 
   for (c in 1:length(csvFiles)){
     data <- read.csv(csvFiles[c])
@@ -94,8 +94,8 @@ Does this mean the daily samples are only for offpeak?
 This file contains 9,666 observations and 9 fields. Each sample was geocoded with an _Origin_Zone_ and _Destination_Zone_ pairs and _Count_ represents the total flows betweent these OD pairs. The start and end dates define the data collection period, which is April, 2015. The other fields: _Subscriber_Class_, _Purpose_ and _Time_of_Day_ describe the trip attributes.
 
 ```{r trips, echo=TRUE, message=FALSE, warning=FALSE}
-  data_wddp <- read.csv("trip_leg_matrix_cusWDDP.csv")
-  data_wdh <- read.csv("trip_leg_matrix_cusWDH.csv")
+  data_wddp <- read.csv("airsage/trip_leg_matrix_cusWDDP.csv")
+  data_wdh <- read.csv("airsage/trip_leg_matrix_cusWDH.csv")
   data_wddp$tod <- "peak"
   data_wdh$tod <- "24H"
   data <- rbind(data_wddp, data_wdh)
@@ -199,7 +199,7 @@ This file contains 9,666 observations and 9 fields. Each sample was geocoded wit
 
 
 ```{r sub_ee_peak, echo=FALSE}
-  sub_wddp <- read.csv("trip_leg_submatrix_cusWDDP.csv")
+  sub_wddp <- read.csv("airsage/trip_leg_submatrix_cusWDDP.csv")
   trips_by_type    <- sub_wddp %>% group_by(Subscriber_Class) %>% 
                       summarise(trips = sum(Count), ee = sum(SZCount)) %>% arrange(Subscriber_Class)
   trips_by_purpose <- sub_wddp %>% group_by(Subscriber_Class, Purpose) %>% 
@@ -245,7 +245,7 @@ This file contains 9,666 observations and 9 fields. Each sample was geocoded wit
 
 
 ```{r sub_ee_daily, echo=FALSE}
-  sub_wdh <- read.csv("trip_leg_submatrix_cusWDH.csv")
+  sub_wdh <- read.csv("airsage/trip_leg_submatrix_cusWDH.csv")
 
   # fix colnames for purpose and time_of_day
   sub_wdh <- sub_wdh %>% rename(Purpose = Time_of_Day, Time_of_Day = Purpose)
@@ -288,10 +288,10 @@ This file contains 9,666 observations and 9 fields. Each sample was geocoded wit
 ## 2. Reading shape data used in the airsage data aggregation.
 ```{r, echo = TRUE}
 # Add project shape files
-shape <- readOGR("airsarge_districts/TAZs.shp", layer = "TAZs", verbose = FALSE)
+shape <- readOGR(airsage_shapeFile, layer = "TAZs", verbose = FALSE)
 
 # Read District equivqlency file
-taz_dist <- read.table("airsarge_districts/Renumber2.txt", sep = "\t", col.names = c("Dist", "TAZ","pct"))
+taz_dist <- read.table(airsage_Districts, sep = "\t", col.names = c("Dist", "TAZ","pct"))
   
 # Compute centroids
 shape_polySet <- SpatialPolygons2PolySet(shape)

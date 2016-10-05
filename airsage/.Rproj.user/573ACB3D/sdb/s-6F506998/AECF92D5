@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "# load libraries\nlibrary(tidyr)\nlibrary(dplyr)\nlibrary(knitr)\nlibrary(leaflet)\nlibrary(rgdal)\nlibrary(htmltools)\nlibrary(readr)\nlibrary(ggplot2)\nlibrary(geosphere)\n\nlibrary(maptools)    # SpatialPolygons2PolySet\nlibrary(PBSmapping)  # calcCentroid\n\n\n# list files\ncsvFiles <- dir(getwd(), pattern = \".csv\")\n\n# see contents of the files\nfor (f in 1:length(csvFiles)){\n  print(head(read.csv(csvFiles[f])))\n}\n\n# Add project shape files\nshape <- readOGR(\"airsarge_districts/TAZs.shp\", layer = \"TAZs\", verbose = FALSE)\n\n# Add  color pallets\npal_blue <- colorNumeric(\n  palette = \"Blues\",\n  domain = shape$HHDEN\n)\n\npal_red <- colorNumeric(\n  palette = \"Reds\",\n  domain = shape$POPDEN\n)\n\npal_fact <- colorFactor(topo.colors(6), shape$PlnArea)\n\nleaflet() %>%\n  # Base Map\n  addProviderTiles(\"Stamen.Toner\",group = \"Stamen\") %>%\n  addTiles(group = \"OSM\") %>%\n  setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%\n  \n  # add district shape files\n  addTiles %>%\n  addPolygons(\n    data = shape, group = \"Districts\", smoothFactor = 0.5,\n    stroke = TRUE,  weight = 3, color = \"grey\",opacity = 0.5,\n    fill = TRUE, fillOpacity = 0.5,\n    fillColor = ~pal_fact(PlnArea), \n    popup = ~paste(sep = \"<br/>\",\n                   htmlEscape(paste(\"District = \",as.character(PlnArea),sep=\"\")),\n                   htmlEscape(paste(\"TAZ = \",as.character(TAZ),sep=\"\")),\n                   htmlEscape(paste(\"AREA = \",as.character(SQMILE), sep=\"\")),\n                   htmlEscape(paste(\"Population =\", as.character(TOTPOP), sep=\"\")),\n                   htmlEscape(paste(\"Households =\", as.character(TOTHH), sep=\"\")),\n                   htmlEscape(paste(\"Workers =\", as.character(TOTWORK), sep=\"\")),\n                   htmlEscape(paste(\"Pop density =\", as.character(POPDEN), sep=\"\")),\n                   htmlEscape(paste(\"HH density =\", as.character(HHDEN), sep=\"\")),\n                   htmlEscape(paste(\"Work density =\", as.character(WORKDEN), sep=\"\"))\n    )\n  )  %>%\n  addPolygons(\n    data = shape, group = \"Households\", smoothFactor = 0.5,\n    stroke = TRUE,  weight = 3, color = \"grey\",opacity = 0.5,\n    fill = TRUE, fillOpacity = 0.5,\n    fillColor = ~pal_blue(HHDEN)\n  )  %>%  \n  addPolygons(\n    data = shape, group = \"Pop Density\",smoothFactor = 0.5,\n    stroke = TRUE,  weight = 3, color = \"grey\",opacity = 0.5,\n    fill = TRUE, fillOpacity = 0.5,\n    fillColor = ~pal_red(POPDEN)\n  )  %>%\n    \n  addLegend(\n    \"bottomright\",pal = pal_blue, values = shape$HHDEN,\n     title = \"Households\"\n   ) %>%\n  \n  addLegend(\n    \"bottomleft\",pal = pal_red, values = shape$POPDEN,\n    title = \"Population\", layerId = 1\n  ) %>% \n  \n addLayersControl(\n  baseGroups = c(\"OSM\",\"Stamen\"),\n  overlayGroups = c(\"Districts\", \"Households\", \"Pop Density\"),\n  options = layersControlOptions(collapsed = FALSE)\n  #layerId = 1\n ) %>%\n\nhideGroup(c( \"Households\",\"Pop Density\"))\n   \n\ncentroids <- getSpPPolygonsLabptSlots(shape)\n\n\n\n\n\n\n\n\n\n",
+    "created" : 1474995345084.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3198381031",
+    "id" : "AECF92D5",
+    "lastKnownWriteTime" : 1475592254,
+    "last_content_update" : 1475592254958,
+    "path" : "/Volumes/C/projects/Flagler/airsage/review.R",
+    "project_path" : "review.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
