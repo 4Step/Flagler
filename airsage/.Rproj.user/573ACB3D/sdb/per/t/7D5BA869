@@ -1,0 +1,28 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1475767982071.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "7D5BA869",
+    "lastKnownWriteTime" : 4318645424,
+    "last_content_update" : 1475767982071,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "4kianyrexj",
+        "caption" : "taz_dist",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=taz_dist&cache_key=4kianyrexj",
+        "displayedObservations" : 40,
+        "environment" : "",
+        "object" : "taz_dist",
+        "totalObservations" : 40,
+        "variables" : 2
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
