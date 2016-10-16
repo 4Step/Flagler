@@ -2,9 +2,28 @@
 title: "Flagler Data Review"
 author: "Amar Sarvepalli"
 date: "September 27, 2016"
-output: html_document
+output: 
+  html_document: 
+    fig_caption: yes
+    fig_width: 9
+    keep_md: yes
+    number_sections: yes
+    toc: yes
 ---
-```{r, echo = TRUE}
+
+## Introduction
+This memo is divided into following sections:
+
+1) Airsage Data Files
+2) Review of Data
+3) AirSage OD Flows
+4) Review of ACS / CTPP JTW Flows
+5) Census socio-economic data (2000, 2010, 2015 and 2040)
+6) Review of APC data for Flagler
+7) Model validation (compare CTPP Trn Flows and AirSage to Model)
+
+```{r user settings, echo=TRUE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 9.5)
 # User inputs:
 projDir         <- "/Users/amarsarvepalli/Desktop/github/Flagler"
 
@@ -19,18 +38,31 @@ airsage_Districts <- "airsage/airsarge_districts/district_equivalency.csv"
 # Define corridor districts
 Study_districts <- c(20:40)
 
-# Census ACS data files
-acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
+# Gtfs network
+gtfsShapesFile <- "GTFS/miami-dade-transit_20150626_0146/shapes.txt"
+gtfsTripsFile <- "GTFS/miami-dade-transit_20150626_0146/trips.txt"
+gtfsRoutesFile <- "GTFS/miami-dade-transit_20150626_0146/routes.txt"
+routeName <- "flagler"
 
+# Census ACS and CTPP data files
+ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
+acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
+acs_airsage_dist <- "acs_data/tract_district_eqiv.csv"
+
+# APC data
+apc_dir <- "bus_apc_data/Flagler St BRTStudy APC Data Oct 2015_Xlsx"
+apc_tag_districts <- "bus_apc_data/Flagler St BRTStudy APC Data Oct 2015_Xlsx/apc_data_gecoded_districts.csv"
+  
 # Output files
 daily_od_matrix <- "daily_od_trips_by_airsage_districts.csv"
 peak_od_matrix <- "peak_od_trips_by_airsage_districts.csv"
 daily_od_submatrix <- "daily_od_sub_trips_by_airsage_districts.csv"
 peak_od_submatrix <- "peak_od_sub_trips_by_airsage_districts.csv"
+jtw_trn_matrix <- "JTW_trn_trips_by_airsage_districts.csv"
+apc_trn_boardings <- "apc_trn_boardings.csv"
 ```
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 # load libraries
 library(tidyr)
 library(dplyr)
@@ -39,13 +71,11 @@ library(leaflet)
 library(rgdal)
 library(htmltools)
 library(readr)
-
-library(chorddiag)
-
-# Used for computing district centroids
+library(readxl)
+library(chorddiag)   # d3 chord plot
 library(maptools)    # SpatialPolygons2PolySet
 library(PBSmapping)  # calcCentroid
-library(geosphere)
+library(geosphere)   # desire lines
 
 ```
 
@@ -79,16 +109,7 @@ remove_marginals <- function(df){
 
 
 
-## 1. Review of AirSage Data
-This memo is divided into following sections:
-
-1) Airsage Data Files
-2) Review of Data: high level summaries
-3) Plot of OD zones and corridor
-4) Census socio-economic data
-5) Plot of current corridor bus routes
-
-
+## 1. AirSage Data Samples
 #### 1.1 Airsage Data File Description
 This is airsage data review. The following is the description of the data files
 
@@ -132,7 +153,7 @@ Does this mean the daily samples are only for offpeak?
 
 
 #### 1.2 Contents of "trip_leg_matrix_cusWDDP.csv" and Contents of "trip_leg_matrix_cusWDDP.csv"
-This file contains 9,666 observations and 9 fields. Each sample was geocoded with an _Origin_Zone_ and _Destination_Zone_ pairs and _Count_ represents the total flows betweent these OD pairs. The start and end dates define the data collection period, which is April, 2015. The other fields: _Subscriber_Class_, _Purpose_ and _Time_of_Day_ describe the trip attributes.
+This file contains 9,666 observations and 9 fields. Each sample was geocoded with an _Origin_Zone_ and _Destination_Zone_ pairs and _Count_ represents the total flows between these OD pairs. The start and end dates define the data collection period, which is April, 2015. The other fields: _Subscriber_Class_, _Purpose_ and _Time_of_Day_ describe the trip attributes.
 
 ```{r daily & peak trips, echo=TRUE, message=FALSE, warning=FALSE}
   data_wddp <- read.csv("airsage/trip_leg_matrix_cusWDDP.csv")
@@ -157,14 +178,16 @@ The daily file contains more aggregated data with periods combined and thus the 
   # Break down by purpose and period
   samples <- data %>% group_by(tod, Purpose, Time_of_Day) %>% tally
   trips <- data %>% group_by(tod, Purpose, Time_of_Day) %>% summarize(sum = sum(Count))
-  kable(left_join(samples,trips, by = c("Purpose" , "Time_of_Day", "tod")),format.args = list(big.mark = ","), digits = 0)
+  kable(left_join(samples,trips, by = c("Purpose" , "Time_of_Day", "tod")),
+        format.args = list(big.mark = ","), digits = 0)
   
 ```
 
-#### 1.3 Contents of Daily file (_trip_leg_matrix_cusWDH.csv_)
+## 2. Review of AirSage Data
+#### 2.1 Contents of Daily file (_trip_leg_matrix_cusWDH.csv_)
 #### Trips by purpose and resident type (Subscriber_Class)
 * There are a total of 7,457,084 OD flows in 24H. 
-* About 83% of these trips (6.2 Million daily flows) are made by resident pouplation and the remaining 17% of trip are made by the visitors. 
+* About 83% of these trips (6.2 Million daily flows) are made by resident population and the remaining 17% of trip are made by the visitors. 
 * Most of the visitor trip purpose was Non-home based (NHB) as expected, however there are few handful of trips that are coded as Home-based other (HBO) trips (0.03%). These trips can be recoded into NHB as it makes less sense to assume a "home end" for visitors.
 * Of 6.2 Million resident trips, 17% are Home-based work (HBW), 29% are NHB and 36% are HBO trips. The work share of trips is in acceptable range for HBW trips (typically ~20%).
 
@@ -199,21 +222,24 @@ The daily file contains more aggregated data with periods combined and thus the 
   
 ```
 
-#### 1.4 Contents of Peak period files (_trip_leg_matrix_cusWDDP.csv_)
+#### 2.2 Contents of Peak period files (_trip_leg_matrix_cusWDDP.csv_)
 #### Trips by purpose, resident type (Subscriber_Class) and time of day
 * There are a total of 2,945,178 OD flows in the peak two periods. 
-* About 85% of these trips (2.5 Million flows) are made by resident pouplation and the remaining 15% of trip are made by the visitors. 
+* About 85% of these trips (2.5 Million flows) are made by resident population and the remaining 15% of trip are made by the visitors. 
 * Most of the visitor trip purpose was Non-home based (NHB) as expected, however there are few handful of trips that are coded as Home-based other (HBO) trips (0.02%). These trips can be recoded into NHB as it makes less sense to assume a "home end" for visitors.
 * Of 2.5 Million resident trips, 21% are Home-based work (HBW), 29% are NHB and 34% are HBO trips. The non-work share of trips seems too high given this file contains data only for the 6 hour peak periods.
 * Trips by time of day shows almost equal split between AM and PM peak periods with slightly more trips in PM period.
 
-```{r, echo = FALSE}
+```{r peak trips, echo=FALSE}
   trips_by_type    <- data_wddp %>% group_by(Subscriber_Class) %>% 
                       summarise(trips = sum(Count)) %>% arrange(Subscriber_Class)
+
   trips_by_purpose <- data_wddp %>% group_by(Subscriber_Class, Purpose) %>% 
                       summarise(trips = sum(Count)) %>% arrange(Subscriber_Class)
+  
   trips_by_period  <- data_wddp %>% group_by(Time_of_Day) %>% 
                       summarise(trips = sum(Count)) %>% arrange(Time_of_Day)
+  
   trips_by_OD      <- data_wddp %>% group_by(Origin_Zone, Destination_Zone) %>% 
                       summarise(trips = sum(Count)) %>% spread(Destination_Zone, trips)
 
@@ -233,21 +259,12 @@ The daily file contains more aggregated data with periods combined and thus the 
   
   write.csv(trips_by_OD, peak_od_matrix, row.names = FALSE)
   
-  # District to district flows (limit this to Flagler districts)
-  # trips_by_OD <- trips_by_OD[,2:41]
-  # trips_by_OD[is.na(trips_by_OD)] <- 0
-  # m <- as.matrix(trips_by_OD)
-  # dist <- c(1:40)
-  # dimnames(m) <- list(Origins = dist,Destinations = dist)
-  # groupColors <- colors()[dist]
-  # chorddiag(m, groupColors = groupColors, groupnamePadding = 20)
-
 ```
 
-#### 1.5 Airsage districts
+#### 2.3 Airsage districts
 The airsage data was provided for about 40 districts as shown in the below interactive map. 
 
-```{r, echo = TRUE}
+```{r  airsage shapes, echo=TRUE}
 
 # Add airsage district file
 shape <- readOGR(airsage_shapeFile, layer = "TAZs", verbose = FALSE)
@@ -261,7 +278,7 @@ shape@data <- left_join(shape@data, taz_dist, by = "TAZ")
 ```
 
 
-```{r, echo = FALSE}
+```{r district locations, echo=FALSE}
 # Compute centroids
 shape_polySet <- SpatialPolygons2PolySet(shape)
 
@@ -269,30 +286,14 @@ shape_polySet <- SpatialPolygons2PolySet(shape)
 centroids <- calcCentroid(shape_polySet, rollup=1)
 shape@data <- cbind(shape@data, centroids)   # Assume internal order matching
 
-# Add  color pallets
-pal_hh <- colorNumeric(
-  palette = "Blues",
-  domain = shape$HHDEN
-)
+# Create study area spatial data
+studyShape <- subset(shape, Districts %in% Study_districts) 
 
-pal_pop <- colorNumeric(
-  palette = "Reds",
-  domain = shape$POPDEN
-)
-
-pal_work <- colorNumeric(
-  palette = "Blues",
-  domain = shape$WORKDEN
-)
-
-pal_emp <- colorNumeric(
-  palette = "Reds",
-  domain = shape$EMPDEN
-)
-
+# select colors based on Area Names
 pal_fact <- colorFactor(topo.colors(6), shape$PlnArea)
 
 map <- leaflet() %>%
+  
   # Base Map
   addProviderTiles("Stamen.Toner",group = "Stamen") %>%
   addTiles(group = "OSM") %>%
@@ -304,52 +305,121 @@ map <- leaflet() %>%
     data = shape, group = "Dist Polyline", smoothFactor = 0.5,
     stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
     fill = FALSE) %>%
+  
+  # Color districts and create as a new layer
   addPolygons(
     data = shape, group = "Districts", smoothFactor = 0.5,
     stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
     fill = TRUE, fillOpacity = 0.5,
     fillColor = ~pal_fact(PlnArea)
-    # popup = ~paste(sep = "<br/>",
-    #                htmlEscape(paste("District = ",as.character(PlnArea),sep="")),
-    #                htmlEscape(paste("TAZ = ",as.character(TAZ),sep="")),
-    #                htmlEscape(paste("AREA = ",as.character(SQMILE), sep="")),
-    #                htmlEscape(paste("Population =", as.character(TOTPOP), sep="")),
-    #                htmlEscape(paste("Households =", as.character(TOTHH), sep="")),
-    #                htmlEscape(paste("Workers =", as.character(TOTWORK), sep="")),
-    #                htmlEscape(paste("Pop density =", as.character(POPDEN), sep="")),
-    #                htmlEscape(paste("HH density =", as.character(HHDEN), sep="")),
-    #                htmlEscape(paste("Work density =", as.character(WORKDEN), sep=""))
-    # )
   ) %>%
-   
+  
+  # Add Study area districts as a layer
+  addPolygons(
+    data = studyShape, group = "Flagler Corridor", smoothFactor = 0.5,
+    stroke = TRUE,  weight = 3, color = "black",opacity = 1.0,
+    fill = TRUE, fillOpacity = 0.75,
+    fillColor = "black"
+  ) %>%
+     
   # Add district names
-  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, weight = 1, label =   ~as.character(shape$Districts), radius = 1, labelOptions = labelOptions(noHide = T),  group = "Districts")
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+                   weight = 1, label =   ~as.character(shape$Districts), 
+                   radius = 1, labelOptions = labelOptions(noHide = T),  
+                   group = "Districts Labels") %>%
+  
+  # Add control 
+  addLayersControl(
+        baseGroups = c("OSM","Stamen"),
+        overlayGroups = c("Districts","Districts Labels","Flagler Corridor"),
+        options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup(c("Districts Labels"))
 
-map
 
 ```
 
-#### 1.6 Study Area Flows
+
+```{r add flagler routes, echo=FALSE}
+
+# Read GTFS files
+gtfsShapes <- read.csv(gtfsShapesFile)
+gtfsTrips <- read.csv(gtfsTripsFile)
+gtfsRoutes <- read.csv(gtfsRoutesFile)
+
+# Get Flagler shape point from above three files
+flaglerShape <- gtfsShapes %>%   
+                left_join(gtfsTrips, by = "shape_id") %>%
+                left_join(gtfsRoutes, by = "route_id") %>%
+                filter(grepl(routeName, route_long_name, ignore.case = TRUE)) %>%
+                select (route_id, shape_id, route_long_name, route_color, 
+                        shape_pt_lat, shape_pt_lon, shape_pt_sequence, 
+                        shape_dist_traveled) %>%
+                distinct()
+
+# Generate from and to data points from shape points
+flaglerShape <- flaglerShape %>% group_by(shape_id) %>% 
+                rename(from_lat = shape_pt_lat, from_lon = shape_pt_lon) %>%
+                mutate(to_lat = lead(from_lat, 1),
+                       to_lon = lead(from_lon, 1)) %>%
+                ungroup() %>%
+                filter(!is.na(to_lat))
+
+ total_shapes <- unique(flaglerShape$shape_id)
+ factpal <- colorFactor(topo.colors(8), flaglerShape$shape_id)
+ 
+ # Map data
+ map <- map %>%
+   
+   # Base Map
+   addProviderTiles("Stamen.Toner",group = "Stamen") %>%
+   addTiles(group = "OSM") %>%
+   setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
+   addCircles(data = flaglerShape, lng = ~from_lon, lat = ~from_lat, 
+               weight = 1, radius =100, color = ~factpal(shape_id),
+               popup = ~paste0("Route: ", route_long_name), group = "Flagler Routes"
+              ) %>%
+  
+   # Add control 
+  addLayersControl(
+        baseGroups = c("OSM","Stamen"),
+        overlayGroups = c("Districts","Districts Labels","Flagler Corridor", "Flagler Routes"),
+        options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup(c("Districts Labels"))
+             
+  map
+  
+```
+
+## 3. AirSage OD Flows
+#### Study Area Flows
 Districts 20 - 40 represent Flagler Corridor study area.  The entire study area was defined as one super district "StudyArea" and the rest of the districts as "Outside" super district. The OD matrix generated for this super districts list the External-External (EE), Internal_External (IE), External_Internal (EI) and Internal-Internal (II) trips to the study area. The study area serves about 11% of the daily trips in the Miami-Dade county (sum of IE, EI and II trips). 
 
-####Daily Study Area Flows
-Tables below show the daily OD flows.
+#### 3.1 Daily Study Area Flows
+Tables below show the daily OD flows. In order to better understand the travel patterns through the corridor, OD tables are developed to & from the studyarea super district to all other districts, where district 20 is the aggregated study area district.
+
 
 ```{r study_area_daily, echo=FALSE}
   
   # 1. Create Daily flagler matrix (II, EI/IE, EE through Flagler districts)
   study_wdh <- data_wdh %>% mutate(
-                      study_Os = ifelse (Origin_Zone %in% Study_districts, "StudyArea", "Outside"),
-                      study_Ds = ifelse (Destination_Zone %in% Study_districts, "StudyArea", "Outside")
+                      study_Os = ifelse (Origin_Zone %in% Study_districts, 
+                                         "StudyArea", "Outside"
+                                         ),
+                      study_Ds = ifelse (Destination_Zone %in% Study_districts, 
+                                         "StudyArea", "Outside"
+                                         )
                       )
+
   trips_by_OD      <- study_wdh %>% group_by(study_Os, study_Ds) %>% 
                       summarise(trips = sum(Count)) %>% spread(study_Ds, trips) %>% 
                       as.data.frame() %>% select(-study_Os) %>% add_marginals()
   
   row.names(trips_by_OD) <- colnames(trips_by_OD)
-  kable(trips_by_OD,format.args = list(big.mark = ","), digits = 0)
-  
   pct_trips_by_OD <- 100 * trips_by_OD / trips_by_OD["total","total"]
+  
+  kable(trips_by_OD,format.args = list(big.mark = ","), digits = 0)
   kable(pct_trips_by_OD,format.args = list(big.mark = ","), digits = 2)
   
   # 2. Create Daily flagler matrix to other districts  
@@ -373,7 +443,13 @@ Tables below show the daily OD flows.
   study_origins_pct <- 100 * study_origins / study_origins$total
   study_destination <- trips_by_OD %>% select(20) %>% t() %>% as.data.frame()
   study_destination_pct <- 100 * study_destination / study_destination$total
-  studyarea_flows <- bind_rows(study_origins, study_origins_pct, study_destination, study_destination_pct) %>% t() %>% as.data.frame
+  studyarea_flows <- bind_rows(study_origins, 
+                               study_origins_pct, 
+                               study_destination, 
+                               study_destination_pct
+                               ) %>% 
+                     t() %>% as.data.frame
+  
   colnames(studyarea_flows) <- c("Origins", "Origin_Pct", "Destination", "Dest_Pct")
   kable(studyarea_flows,format.args = list(big.mark = ","), digits = 2)
   
@@ -381,23 +457,25 @@ Tables below show the daily OD flows.
   df <- remove_marginals(trips_by_OD)
   m <- as.matrix(df)
   dimnames(m) <- list(Origins = row.names(df), Destinations = row.names(df))
-  groupColors <-  colorRampPalette(c("blue", "red", "green"))(20) 
+  groupColors <-colorRampPalette(c("blue", "red", "green"))(20) 
   chorddiag(m, groupColors = groupColors, groupnamePadding = 20, showTicks = FALSE)
 ``` 
 
 Plot of total daily Origins and Destinations to/from Study Area.
 
-```{r, echo = FALSE}    
-  # Plot desire lines
+```{r daily desire line, echo=FALSE}
+  # Plot desire lines for the daily trips
   trips_by_OD <- trips_by_OD %>% 
                  remove_marginals() %>% 
                  gather() %>% 
                  mutate(To = rep(c(1:20),20)) %>% 
-                 rename(From = key) 
+                 rename(From = key)
+
   trips_by_OD$From <- as.integer(trips_by_OD$From)
   
   dist_cords <- shape@data %>% filter(Districts < 21) %>% select(Districts, X, Y)
   
+  # From Study Area to all districts
   from_Study <- trips_by_OD %>% 
                   left_join(dist_cords, by = c("From" = "Districts")) %>%
                   rename(fromlong = X, fromlat = Y) %>%
@@ -405,14 +483,16 @@ Plot of total daily Origins and Destinations to/from Study Area.
                   rename(tolong = X, tolat = Y) %>%
                   filter(From == 20) 
   
+  # Generate desire lines
   from_flows <- gcIntermediate(
-  p1 = select(from_Study, fromlong:fromlat),
-  p2 = select(from_Study, tolong:tolat),
-  sp = TRUE,
-  addStartEnd = TRUE
-  )
+                  p1 = select(from_Study, fromlong:fromlat),
+                  p2 = select(from_Study, tolong:tolat),
+                  sp = TRUE,
+                  addStartEnd = TRUE
+                )
   from_flows <- SpatialLinesDataFrame(from_flows, from_Study)
 
+  # From all districts to Study Area district
   to_Study <- trips_by_OD %>% 
                   left_join(dist_cords, by = c("From" = "Districts")) %>%
                   rename(fromlong = X, fromlat = Y) %>%
@@ -421,6 +501,7 @@ Plot of total daily Origins and Destinations to/from Study Area.
                   filter(To == 20) %>%
                   mutate(pct = 100 * value/sum(value))
   
+  # Generate desire lines 
   to_flows <- gcIntermediate(
               p1 = select(to_Study, fromlong:fromlat),
               p2 = select(to_Study, tolong:tolat),
@@ -430,7 +511,7 @@ Plot of total daily Origins and Destinations to/from Study Area.
   
   to_flows <- SpatialLinesDataFrame(to_flows, to_Study)
 
-  
+  # Map both origins and destination flows to/from study area
   map %>%
   addPolylines(
     data = from_flows,
@@ -463,15 +544,16 @@ Plot of total daily Origins and Destinations to/from Study Area.
   ) %>%
   addLayersControl(
         baseGroups = c("OSM","Stamen"),
-        overlayGroups = c("Districts","Origins", "Destinations"),
+        overlayGroups = c("Districts","Origins", "Destinations", "Districts Labels","Flagler Corridor"),
         options = layersControlOptions(collapsed = FALSE)
   ) %>%
-  hideGroup(c("Districts", "Destinations"))
+  hideGroup(c("Districts", "Destinations", "Districts Labels"))
 
 ```
 
-####Peak Study Area Flows
-The following are the tables showing the peak trips
+#### 3.2 Peak Study Area Flows
+The following are the tables showing the peak trips. In order to better understand the travel patterns through the corridor, OD tables are developed to & from the studyarea super district to all other districts, where district 20 is the aggregated study area district.
+
 ```{r study_area_peak, echo=FALSE}  
   # 3. Create Peak flagler matrix (II, EI/IE, EE through Flagler districts)
   study_wddp <- data_wddp %>% mutate(
@@ -489,7 +571,7 @@ The following are the tables showing the peak trips
   kable(pct_trips_by_OD,format.args = list(big.mark = ","), digits = 2)
   
   # 4. Create Peak flagler matrix to other districts  
-  study_wdh <- data_wdh %>% mutate(
+  study_wddp <- data_wddp %>% mutate(
                       study_Os = ifelse (Origin_Zone %in% Study_districts, 
                                          min(Study_districts), Origin_Zone
                                          ),
@@ -498,17 +580,31 @@ The following are the tables showing the peak trips
                                          )
                       )
   
-  trips_by_OD      <- study_wdh %>% group_by(study_Os, study_Ds) %>% 
+  trips_by_OD      <- study_wddp %>% group_by(study_Os, study_Ds) %>% 
                       summarise(trips = sum(Count)) %>% spread(study_Ds, trips) %>%
                       as.data.frame() %>% select(-study_Os) %>% add_marginals()
   
   row.names(trips_by_OD) <- colnames(trips_by_OD)
   pct_trips_by_OD <- 100 * trips_by_OD / trips_by_OD["total","total"]
   print("Percent of Peak Trips")
-  kable(pct_trips_by_OD,format.args = list(big.mark = ","), digits = 2)
+  # kable(pct_trips_by_OD,format.args = list(big.mark = ","), digits = 2)
   
   # Write output
   write.csv(trips_by_OD, peak_od_submatrix, row.names = FALSE)
+  
+  # Compute to & from Study Area flows (& pct flows)
+  study_origins <- trips_by_OD %>% filter(row.names(trips_by_OD) == "20")
+  study_origins_pct <- 100 * study_origins / study_origins$total
+  study_destination <- trips_by_OD %>% select(20) %>% t() %>% as.data.frame()
+  study_destination_pct <- 100 * study_destination / study_destination$total
+  studyarea_flows <- bind_rows(study_origins, 
+                               study_origins_pct, 
+                               study_destination, 
+                               study_destination_pct
+                               ) %>% 
+                     t() %>% as.data.frame
+  colnames(studyarea_flows) <- c("Origins", "Origin_Pct", "Destination", "Dest_Pct")
+  kable(studyarea_flows,format.args = list(big.mark = ","), digits = 2)
   
   # produce chord diagram  
   df <- remove_marginals(trips_by_OD)
@@ -519,13 +615,156 @@ The following are the tables showing the peak trips
   
 ```
 
-Inorder to better understand the travel patterns through the corridor, OD tables are developed to & from the studyarea super district to all other districts, where district 20 is the aggregated study area district.
+Plot of total peak Origins and Destinations to/from Study Area.
+
+```{r peak desire lines, echo=FALSE}
+  # Plot desire lines for the peak trips
+  trips_by_OD <- trips_by_OD %>% 
+                 remove_marginals() %>% 
+                 gather() %>% 
+                 mutate(To = rep(c(1:20),20)) %>% 
+                 rename(From = key)
+
+  trips_by_OD$From <- as.integer(trips_by_OD$From)
+  
+  dist_cords <- shape@data %>% filter(Districts < 21) %>% select(Districts, X, Y)
+  
+  # From Study Area to all districts
+  from_Study <- trips_by_OD %>% 
+                  left_join(dist_cords, by = c("From" = "Districts")) %>%
+                  rename(fromlong = X, fromlat = Y) %>%
+                  left_join(dist_cords, by = c("To" = "Districts")) %>%
+                  rename(tolong = X, tolat = Y) %>%
+                  filter(From == 20) 
+  
+  # Generate desire lines
+  from_flows <- gcIntermediate(
+                  p1 = select(from_Study, fromlong:fromlat),
+                  p2 = select(from_Study, tolong:tolat),
+                  sp = TRUE,
+                  addStartEnd = TRUE
+                )
+  from_flows <- SpatialLinesDataFrame(from_flows, from_Study)
+
+  # From all districts to Study Area district
+  to_Study <- trips_by_OD %>% 
+                  left_join(dist_cords, by = c("From" = "Districts")) %>%
+                  rename(fromlong = X, fromlat = Y) %>%
+                  left_join(dist_cords, by = c("To" = "Districts")) %>%
+                  rename(tolong = X, tolat = Y) %>%
+                  filter(To == 20) %>%
+                  mutate(pct = 100 * value/sum(value))
+  
+  # Generate desire lines 
+  to_flows <- gcIntermediate(
+              p1 = select(to_Study, fromlong:fromlat),
+              p2 = select(to_Study, tolong:tolat),
+              sp = TRUE,
+              addStartEnd = TRUE
+            )
+  
+  to_flows <- SpatialLinesDataFrame(to_flows, to_Study)
+
+  # Map both origins and destination flows to/from study area
+  map %>%
+  addPolylines(
+    data = from_flows,
+    group = "Origins",
+    weight = ~ value/ 10000,
+    color = "red",
+    popup = ~paste0("Origins Trips: ", value)
+  ) %>%
+  addCircleMarkers(
+    data = from_flows, 
+    lng = from_flows$tolong, lat = from_flows$tolat, weight = 1, 
+    label = ~as.character(format(round(from_flows$value,0), big.mark = ",")),
+    radius = 1,
+    labelOptions = labelOptions(noHide = T),
+    group = "Origins"
+  ) %>%
+  addPolylines(
+    data = to_flows,
+    group = "Destinations",
+    weight = ~ value/ 10000,
+    color = "blue",
+    popup = ~paste0("Destinations Trips: ", value)
+  ) %>%
+  addCircleMarkers(
+    data = to_flows, 
+    lng = to_flows$fromlong, lat = to_flows$fromlat, weight = 1, 
+    label =   ~as.character(format(round(to_flows$value,0), big.mark = ",")), radius = 1, 
+    labelOptions = labelOptions(noHide = T),  
+    group = "Destinations"
+  ) %>%
+  addLayersControl(
+        baseGroups = c("OSM","Stamen"),
+        overlayGroups = c("Districts","Origins", "Destinations", "Districts Labels","Flagler Corridor"),
+        options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup(c("Districts", "Destinations", "Districts Labels"))
+
+```
 
 
-#### 1.7 Contents of Peak subarea files (_trip_leg_submatrix_cusWDDP.csv_)
+#### 3.3 Corridor Level Flows (Peak and Daily ODs)
+\n Airsage daily and peak origin destinations at Corridor level
+
+```{r corridor airsage ods, echo=FALSE} 
+    ods <- left_join(data_wddp %>% group_by(Origin_Zone) %>% summarise(O_wddp = sum(Count)),
+                     data_wdh %>% group_by(Origin_Zone) %>% summarise(O_wdh = sum(Count)),
+                     by = "Origin_Zone") %>% 
+               left_join(data_wddp %>% group_by(Destination_Zone) %>% summarise(D_wddp = sum(Count)),
+                         by = c("Origin_Zone" = "Destination_Zone")) %>% 
+               left_join(data_wdh %>% group_by(Destination_Zone) %>% summarise(D_wdh = sum(Count)),
+                         by = c("Origin_Zone" = "Destination_Zone"))
+               
+   ods <- rename(ods, Districts = Origin_Zone)
+   shape@data <- left_join(shape@data, ods, by = "Districts")
+        
+map_Corridor_ODs <- map %>% 
+  setView(lng = -80.27990, lat = 25.77110, zoom = 12) %>%
+ # Daily Origins 
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$O_wdh,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "Daily Origins") %>%
+   # Daily Destinations 
+   addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$D_wdh,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "Daily Destinations") %>% 
+  # Peak Origins
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$O_wddp,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "Peak Origins") %>%
+  # Peak Destinations
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$D_wddp,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "Peak Destinations") %>% 
+  addLayersControl(
+        baseGroups = c("OSM"),
+        overlayGroups = c("Districts", 
+                          "Daily Origins", "Daily Destinations", 
+                          "Peak Origins", "Peak Destinations"),
+        options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+
+  hideGroup(c("Daily Destinations", "Peak Origins", "Peak Destinations"))
+
+map_Corridor_ODs
+
+```
+
+#### 3.4 Contents of Peak subarea files (_trip_leg_submatrix_cusWDDP.csv_)
 #### Trips by purpose, resident type (Subscriber_Class) and time of day
-* There are a total of 1,472,307 OD flows in this file which represent EE flows through the region (Not sure I fully flow this file - Need some explaination from Airsage)
-* About 83% of these trips (1.2 Million flows) are made by resident pouplation and the remaining 17% of trip are made by the visitors. 
+* There are a total of 1,472,307 OD flows in this file which represent EE flows through the region (Not sure I fully flow this file - Need some explanation from Airsage)
+* About 83% of these trips (1.2 Million flows) are made by resident population and the remaining 17% of trip are made by the visitors. 
 * 10% of these trips are External-External through trips (ee). This is computed based on _SZCount_ field in the data.
 * The share of ee trips by purpose is consistent across all resident purposes and time of day.
 * Most of the visitor trip purpose was Non-home based (NHB) as expected.
@@ -535,10 +774,13 @@ Inorder to better understand the travel patterns through the corridor, OD tables
   sub_wddp <- read.csv("airsage/trip_leg_submatrix_cusWDDP.csv")
   trips_by_type    <- sub_wddp %>% group_by(Subscriber_Class) %>% 
                       summarise(trips = sum(Count), ee = sum(SZCount)) %>% arrange(Subscriber_Class)
+  
   trips_by_purpose <- sub_wddp %>% group_by(Subscriber_Class, Purpose) %>% 
                       summarise(trips = sum(Count), ee = sum(SZCount)) %>% arrange(Subscriber_Class)
+  
   trips_by_period  <- sub_wddp %>% group_by(Time_of_Day) %>% 
                       summarise(trips = sum(Count), ee = sum(SZCount)) %>% arrange(Time_of_Day)
+  
   trips_by_OD      <- sub_wddp %>% group_by(Origin_Zone, Destination_Zone) %>% 
                       summarise(trips = sum(Count)) %>% spread(Destination_Zone, trips)
 
@@ -568,10 +810,10 @@ Inorder to better understand the travel patterns through the corridor, OD tables
 ```
 
 
-#### 1.8 Contents of Peak subarea files (_trip_leg_submatrix_cusWDH.csv_)
+#### 3.4 Contents of Daily subarea files (_trip_leg_submatrix_cusWDH.csv_)
 #### Trips by purpose, and resident type (Subscriber_Class) 
-* There are a total of 4,001,471 OD flows in this file which represent EE flows through the region (Not sure I fully flow this file - Need some explaination from Airsage)
-* About 80% of these trips (2.9 Million flows) are made by resident pouplation and the remaining 20% of trip are made by the visitors. 
+* There are a total of 4,001,471 OD flows in this file which represent EE flows through the region (Not sure I fully flow this file - Need some explanation from Airsage)
+* About 80% of these trips (2.9 Million flows) are made by resident population and the remaining 20% of trip are made by the visitors. 
 * About 9% of these trips are External-External through trips (ee). This is computed based on _SZCount_ field in the data.
 * The share of ee trips by purpose is consistent across all resident purposes and time of day.
 * Most of the visitor trip purpose was Non-home based (NHB) as expected.
@@ -618,102 +860,422 @@ Inorder to better understand the travel patterns through the corridor, OD tables
 ```
 
 *** 
-## 2. Review of Airsage data
-Add Airsage data to the map and compute:
-  1. Samples origins and destinations by distrcits
-  2. Trips origins and destinations by area
-  3. Trips by prupose (table)
-  4. Trip flows by purpose (table, d3chord, flowmap)
+## 4. Review of ACS / CTPP JTW Flows
 
-```{r process airsage, echo=FALSE} 
-    ods <- left_join(data_wddp %>% group_by(Origin_Zone) %>% summarise(O_wddp = sum(Count)),
-                     data_wdh %>% group_by(Origin_Zone) %>% summarise(O_wdh = sum(Count)),
-                     by = "Origin_Zone") %>% 
-               left_join(sub_wddp %>% group_by(Origin_Zone) %>% summarise(O_swddp = sum(Count)),
-                         by = "Origin_Zone") %>% 
-               left_join(sub_wdh %>% group_by(Origin_Zone) %>% summarise(O_sdh = sum(Count)),
-                         by = "Origin_Zone") %>%
-               left_join(data_wddp %>% group_by(Destination_Zone) %>% summarise(D_wddp = sum(Count)),
-                         by = c("Origin_Zone" = "Destination_Zone")) %>% 
-               left_join(data_wdh %>% group_by(Destination_Zone) %>% summarise(D_wdh = sum(Count)),
-                         by = c("Origin_Zone" = "Destination_Zone")) %>%
-               left_join(sub_wddp %>% group_by(Destination_Zone) %>% summarise(D_swddp = sum(Count)),
-                         by = c("Origin_Zone" = "Destination_Zone")) %>%
-               left_join(sub_wdh %>% group_by(Destination_Zone) %>% summarise(D_sdh = sum(Count)),
-                         by = c("Origin_Zone" = "Destination_Zone"))
-   ods <- rename(ods, Districts = Origin_Zone)
+The journey to work (JTW) flow data from 5 year American Community Survey (ACS) 2006-2010 for Miami-Dade county was analyzed to understand the transit trip flows in the region. The tract to tract level data was obtained from ACS website and was processed to report out trips by mode and by districts (as defined in the above airsage data section). Also note that JTW is only for work purpose and is in person trip format which doesn't represent the entire regional trips.
 
-   shape@data <- left_join(shape@data, ods, by = "Districts")
-        
-# Color pallate to cover all values in the OD data
-min_max <- c(do.call(pmin, ods[2:ncol(ods)]),do.call(pmax, ods[2:ncol(ods)]))
-pal_ods <- colorNumeric(
-  palette = "Blues",
-  domain = min_max
-)
+The first table shows ACS CTPP trips by mode. There are about a million work related trips which are almost close to daily HBW trips reported in the airsage data. The breakup shows about 56,000 work related transit trips. The other category includes work from home, non-motorized modes.
 
-map_ODs <- map %>%
- # Peak origins  
- addPolygons(
-    data = shape, group = "O_peak",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_ods(O_wddp),
-     popup = ~paste(sep = "<br/>",
-                    htmlEscape(paste("Peak Origins = ",as.character(round(O_wddp,0)),sep="")))
+
+```{r CTPP data, echo=FALSE, message=FALSE, warning=FALSE}
+# Census ACS and CTPP data files
+ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
+acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
+acs_airsage_dist <- "acs_data/tract_district_eqiv.csv"
+
+# Read airsage districts
+acs_airsage <- read_csv(acs_airsage_dist)
+acs_airsage <- acs_airsage %>% select(NAME, district_e) %>%
+               mutate("tract" = as.character(NAME))
+
+# Read ctpp flow data
+ctpp_flows <- read_csv(ctpp_flowFile, skip = 2)
+colnames(ctpp_flows) <- gsub(" ", "", colnames(ctpp_flows)) 
+
+# Clean data
+ctpp_flows <- ctpp_flows %>% 
+              separate(RESIDENCE, c("geoTypeRes","countyRes"), sep = ",", extra = "drop", remove = TRUE) %>%
+              separate(geoTypeRes, c("geo1","geo2", "tractRes"), sep = " ", remove = TRUE) %>%
+              separate(WORKPLACE, c("geoTypeWrk","countyWrk"), sep = ",", extra = "drop", remove = TRUE) %>%
+              separate(geoTypeWrk, c("geo3","geo4", "tractWrk"), sep = " ", remove = TRUE) %>%            
+              select(-geo1, -geo2, -geo3, -geo4, -X6) %>%
+              filter(countyRes != " Broward County", Output == "Estimate")
+
+# Recode modes              
+transit_modes <- c("Bus or trolley bus", "Subway or elevated", 
+                   "Streetcar or trolley car", "Railroad") 
+
+auto_modes <-   c("Car, truck, or van -- Drove alone",
+                   "Car, truck, or van -- In a 2-person carpool",
+                   "Car, truck, or van -- In a 3-person carpool",
+                   "Car, truck, or van -- In a 4-person carpool",
+                   "Car, truck, or van -- In a 5-or-6-person carpool",
+                   "Car, truck, or van -- In a 7-or-more-person carpool",
+                   "Taxicab")
+
+all_modes  <-   "Total, means of transportation"
+ 
+ctpp_flows   <- ctpp_flows %>% 
+                mutate (modes = ifelse (MeansofTransportation18 %in% transit_modes, "transit",
+                                   ifelse (MeansofTransportation18 %in% auto_modes, "auto",
+                                      ifelse (MeansofTransportation18 == all_modes, "total",
+                                        "other"
+                                         )
+                                      )
+                                   )
+                       ) %>%
+                rename(Trips = Workers16andOver)
+
+# Append district to ctpp flows (recode Miami-Beach tracts to district 10)
+ctpp_flows <- ctpp_flows %>% 
+              left_join(acs_airsage, by = c("tractRes" = "tract")) %>% 
+              rename(From = district_e) %>% 
+              select(-NAME) %>%
+              left_join(acs_airsage, by = c("tractWrk" = "tract")) %>% 
+              rename(To = district_e) %>%
+              select(-NAME) %>%
+              mutate(from = ifelse(is.na(From), 10, From),
+                      to = ifelse(is.na(To), 10, To))
+
+# Summarize data 
+samples <-  ctpp_flows %>% group_by(MeansofTransportation18, modes) %>% tally()
+trips   <-  ctpp_flows %>% group_by(MeansofTransportation18, modes) %>% summarize(trips = sum(Trips)) 
+
+trips_by_mode <- ctpp_flows %>% 
+                 group_by(modes) %>%
+                 summarise(trips = sum(Trips)) %>%
+                 arrange(trips)
+
+trips_by_OD <- ctpp_flows %>% 
+               filter(modes == "transit") %>% 
+               group_by(From, To) %>% 
+               summarise(transit = sum(Trips)) %>% 
+               spread(To, transit)
+
+trips_by_OD[is.na(trips_by_OD)] <- 0
+  
+# Print summaries            
+kable(left_join(samples,trips, by = c("MeansofTransportation18", "modes")), 
+      format.args = list(big.mark = ","), digits = 2)
+            
+kable(trips_by_mode,format.args = list(big.mark = ","), digits = 2)
+write.csv(trips_by_OD, jtw_trn_matrix, row.names = FALSE)
+
+
+
+# # Get layer name from shape file
+# layerName <- strsplit(strsplit(acs_shapeFile,"[.]")[[1]],"/")[[1]][2]
+# 
+# # Add census shape files
+# acsShape <- readOGR(paste0(projDir,"/",acs_shapeFile), layer = layerName, verbose = FALSE)
+# 
+# map <- leaflet() %>%
+#   # Base Map
+#   addProviderTiles("Stamen.Toner",group = "Stamen") %>%
+#   addTiles(group = "OSM") %>%
+#   setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
+#   addTiles %>%
+#   addPolygons(data = acsShape, group = "acs_data")
+#     
+# map
+
+
+```
+
+
+Plot transit desire lines
+```{r Trn plots, echo=FALSE}
+
+  study_ctpp_flows <- ctpp_flows %>% mutate(
+                      study_Os = ifelse (From %in% Study_districts, 
+                                         min(Study_districts), From
+                                         ),
+                      study_Ds = ifelse (To %in% Study_districts, 
+                                         min(Study_districts), To
+                                         )
+                      )
+  
+  # Plot transit desire lines
+  trips_by_OD <- study_ctpp_flows %>% 
+               filter(modes == "transit") %>% 
+               group_by(study_Os, study_Ds) %>% 
+               summarise(transit = sum(Trips)) %>%
+               select(study_Os, study_Ds, transit) %>%
+               filter(study_Os != 0, study_Ds != 0)
+
+  # dist_cords <- shape@data %>% filter(Districts < 21) %>% select(Districts, X, Y)
+  # dist_cords <- shape@data %>% select(Districts, X, Y)
+  # dist32 <- c(long = -80.27990 , lat = 25.77110)
+
+  from_Study <- trips_by_OD %>% 
+                  left_join(dist_cords, by = c("study_Os" = "Districts")) %>%
+                  rename(fromlong = X, fromlat = Y) %>%
+                  left_join(dist_cords, by = c("study_Ds" = "Districts")) %>%
+                  rename(tolong = X, tolat = Y) %>%
+                  filter(study_Os == 20) %>% 
+                  ungroup()
+
+  #from_Study <- from_Study %>% mutate(fromlong = dist32[1], fromlat = dist32[2])
+  
+  # Generate desire lines
+  from_flows <- gcIntermediate(
+                  p1 = select(from_Study, fromlong:fromlat),
+                  p2 = select(from_Study, tolong:tolat),
+                  sp = TRUE,
+                  addStartEnd = TRUE
+                )
+  from_flows <- SpatialLinesDataFrame(from_flows, from_Study)
+
+  # From all districts to Study Area district
+  to_Study <- trips_by_OD %>% 
+                  left_join(dist_cords, by = c("study_Os" = "Districts")) %>%
+                  rename(fromlong = X, fromlat = Y) %>%
+                  left_join(dist_cords, by = c("study_Ds" = "Districts")) %>%
+                  rename(tolong = X, tolat = Y) %>%
+                  filter(study_Ds == 20) %>%
+                  ungroup()
+  
+  # to_Study <- to_Study %>% mutate(tolong = dist32[1], tolat = dist32[2])
+  
+  # Generate desire lines 
+  to_flows <- gcIntermediate(
+              p1 = select(to_Study, fromlong:fromlat),
+              p2 = select(to_Study, tolong:tolat),
+              sp = TRUE,
+              addStartEnd = TRUE
+            )
+  
+  to_flows <- SpatialLinesDataFrame(to_flows, to_Study)
+
+  # Map both origins and destination flows to/from study area
+  trnFlows <- map %>%
+  addPolylines(
+    data = from_flows,
+    group = "Origins",
+    weight = ~ transit/100,
+    color = "red",
+    popup = ~paste0("Origins Trips: ", transit)
   ) %>%
-
-  # Daily origins
-  addPolygons(
-    data = shape, group = "O_daily",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_ods(O_wdh),
-    popup = ~paste(sep = "<br/>",
-                    htmlEscape(paste("Daily Origins = ",as.character(round(O_wdh,0)),sep="")))
-  )  %>%
-  # Peak Destinations
-  addPolygons(
-    data = shape, group = "D_peak",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_ods(D_wddp),
-        popup = ~paste(sep = "<br/>",
-                    htmlEscape(paste("Peak Destinations = ",as.character(round(D_wddp,0)),sep="")))
-  )  %>%
-  # Daily Destinations
-  addPolygons(
-    data = shape, group = "D_daily",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_ods(D_wdh),
-        popup = ~paste(sep = "<br/>",
-                    htmlEscape(paste("Daily Destinations = ",as.character(round(D_wdh,0)),sep="")))
+  addCircleMarkers(
+    data = from_flows, 
+    lng = from_flows$tolong, lat = from_flows$tolat, weight = 1, 
+    label = ~as.character(format(round(from_flows$transit,0), big.mark = ",")),
+    radius = 1,
+    labelOptions = labelOptions(noHide = T),
+    group = "Origins"
   ) %>%
-
-  addLegend(
-    "bottomleft",pal = pal_ods, values = min_max,
-     title = "Counts"
-   ) %>%
+  addPolylines(
+    data = to_flows,
+    group = "Destinations",
+    weight = ~ transit/100,
+    color = "blue",
+    popup = ~paste0("Destinations Trips: ", transit)
+  ) %>%
+  addCircleMarkers(
+    data = to_flows, 
+    lng = to_flows$fromlong, lat = to_flows$fromlat, weight = 1, 
+    label =   ~as.character(format(round(to_flows$transit,0), big.mark = ",")), radius = 1, 
+    labelOptions = labelOptions(noHide = T),  
+    group = "Destinations"
+  ) %>%
   addLayersControl(
         baseGroups = c("OSM","Stamen"),
-        overlayGroups = c("Districts","O_peak", "O_daily", "D_peak", "D_daily"),
+        overlayGroups = c("Districts","Origins", "Destinations", "Districts Labels","Flagler Corridor"),
+        options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  hideGroup(c("Districts", "Destinations", "Districts Labels"))
+
+  trnFlows
+  
+```
+
+Corridor level CTPP JTW transit origins and destinations
+
+```{r Corrior CTPP  trn flows, echo = FALSE}
+
+    trn_ctpp <- ctpp_flows %>% filter(modes == "transit")
+
+    trn_ods <- left_join(trn_ctpp %>% group_by(from) %>% summarise(trn_Origins = sum(Trips)),
+                     trn_ctpp %>% group_by(to) %>% summarise(trn_Destinations = sum(Trips)),
+                      by = c("from" = "to")) %>%
+               rename(Districts = from) %>%
+               filter()
+               
+   shape@data <- left_join(shape@data, trn_ods, by = "Districts")
+        
+  map_Corridor_trn_ODs <- trnFlows %>%   
+  setView(lng = -80.27990, lat = 25.77110, zoom = 12) %>% 
+ # Trn Origins 
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$trn_Origins,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "CTPP Origins") %>%
+   # Trn Destinations 
+   addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+        weight = 1, 
+        label =  ~as.character(format(round(shape$trn_Destinations,0), big.mark = ",")),
+        radius = 1, labelOptions = labelOptions(noHide = T),  
+        group = "CTPP Destinations") %>% 
+  addLayersControl(
+        baseGroups = c("OSM"),
+        overlayGroups = c("Districts", 
+                          "CTPP Origins", "CTPP Destinations"),
         options = layersControlOptions(collapsed = FALSE)
   ) %>%
 
-  hideGroup(c("O_peak", "O_daily", "D_peak", "D_daily"))
+  hideGroup(c("CTPP Destinations"))
+  map_Corridor_trn_ODs
 
-map_ODs
+```
+
+
+***
+## 5. Review of APC Data
+The APC data was collected for 22 routes in the study area. The table shows list of routes with observed boardings.
+```{r APC data, echo=FALSE}
+
+ # Read all route files in the directory
+  xlsFiles <- dir(apc_dir, pattern = ".xlsx")
+
+  for (i in 1:length(xlsFiles)){
+    
+    apc_data_route <- read_excel(paste0(projDir,"/",apc_dir,"/",xlsFiles[i]), sheet = 1)
+    
+    ifelse(i ==1, apc_data <- apc_data_route, 
+           apc_data <- bind_rows(apc_data, apc_data_route))
+  }
+
+ # Get highlevel summaries
+ route_boardings <- apc_data %>% 
+                    group_by(ROUTE) %>% 
+                    summarize(
+                      boardings = sum(DAY_ON),
+                      alightings = sum(DAY_OFF),
+                      total = sum(DAY_TOT)
+                      )
+ 
+ # Add airsage districts to stops
+ geocoded_stop_districts <- read.csv(apc_tag_districts)
+ apc_data <- apc_data %>%
+              left_join(geocoded_stop_districts, 
+                by = c("ROUTE" = "ROUTE", "STOPNAME" = "STOPNAME")) %>%
+              rename(District = TAZ_Distri)
+ 
+ # apc data for the study area
+ study_apc_data <- apc_data %>% 
+                   filter(District %in% Study_districts)
+ 
+ study_route_boardings <- study_apc_data %>% 
+                    group_by(ROUTE) %>% 
+                    summarize(
+                      boardings = sum(DAY_ON),
+                      alightings = sum(DAY_OFF),
+                      total = sum(DAY_TOT)
+                      )
+ 
+ summary_route <- route_boardings %>% 
+                  left_join(study_route_boardings, 
+                      by = "ROUTE",
+                      suffix = c("_Route", "_Flagler")
+                   ) %>%
+                   add_marginals() %>%
+                   select(-total)
+ 
+ summary_route["total","ROUTE"] <- 0
+ 
+ # Print route boardings
+ kable(summary_route,format.args = list(big.mark = ","), digits = 2)
+ write.csv(summary_route, apc_trn_boardings, row.names = FALSE)
+ 
+ # Map boardings by stops
+ factpal <- colorFactor(topo.colors(22), apc_data$ROUTE)
+ 
+ map %>%
+    addCircles(
+    data = apc_data, 
+    lng = ~LONG, lat = ~LAT, weight = 1, 
+    radius = ~DAY_TOT,
+    popup = ~ROUTE,
+    color = ~factpal(ROUTE),
+    group = "Total"
+  )  %>%
+  addCircles(
+    data = apc_data, 
+    lng = ~LONG, lat = ~LAT, weight = 1, 
+    radius = ~DAY_ON,
+    popup = ~ROUTE,
+    color = ~factpal(ROUTE),
+    group = "Boardings"
+  ) %>%
+  addCircles(
+    data = apc_data, 
+    lng = ~LONG, lat = ~LAT, weight = 1, 
+    radius = ~DAY_OFF,
+    popup = ~ROUTE,
+    color = ~factpal(ROUTE),
+    group = "Alightings"
+  ) %>%
+  addLayersControl(
+  baseGroups = c("OSM"),
+  overlayGroups = c("Districts","Boardings", "Alightings", "Total"),
+  options = layersControlOptions(collapsed = FALSE)
+ ) %>%
+
+hideGroup(c("Boardings", "Alightings"))
+
+   
+ 
 
 ```
 
 
 *** 
-## 3. Review of Census data
+## 6. Census Data review (2000, 2010, 2015 and 2040)
+1. Review of households, population 
+2. Review of Employment
+3. Review of zero car households
+4. Review of low income
+
+
+## 5. Review of Census Data
 ### Review of Household, Population, Worker and Employment data
 The map below displays population, and household and employment densities. 
 
 ```{r, echo=FALSE}
+
+# Get layer name from shape file
+layerName <- strsplit(strsplit(acs_shapeFile,"[.]")[[1]],"/")[[1]][2]
+# Add census shape files
+acsShape <- readOGR(paste0(projDir,"/",acs_shapeFile), layer = layerName, verbose = FALSE)
+
+map <- leaflet() %>%
+  # Base Map
+  addProviderTiles("Stamen.Toner",group = "Stamen") %>%
+  addTiles(group = "OSM") %>%
+  setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
+  addTiles %>%
+  addPolygons(data = acsShape, group = "acs_data")
+    
+map
+# download census data (from acs package - caution: corrupts dplr library)
+ # acs_data <- acs.fetch (endyear = 2014, geo=geo.make(state="FL", county=c(86), tract="*"),
+ #                      table.number="B08202")
+
+
+  # acs.lookup(dataset = "acs", endyear = 2014, keyword="Income")
+ 
+     
+# Add  color pallets
+pal_hh <- colorNumeric(
+  palette = "Blues",
+  domain = shape$HHDEN
+)
+
+pal_pop <- colorNumeric(
+  palette = "Reds",
+  domain = shape$POPDEN
+)
+
+pal_work <- colorNumeric(
+  palette = "Blues",
+  domain = shape$WORKDEN
+)
+
+pal_emp <- colorNumeric(
+  palette = "Reds",
+  domain = shape$EMPDEN
+)
 
 map_hhPop <- map %>%
   addPolygons(
@@ -749,7 +1311,7 @@ hideGroup(c( "HH Density","Pop Density"))
 map_hhPop
 ```
 
-The map below displays employment and worker densities. THe worker densities are the household workers which is different the employment data.
+The map below displays employment and worker densities. The worker densities are the household workers which is different the employment data.
 
 ```{r, echo = FALSE}
 map_workEmp <- map %>% 
@@ -788,45 +1350,5 @@ map_workEmp <- map %>%
 map_workEmp
 ```
 
-### 3. Read Miami Dade Zones
-<!-- # ```{r, echo = TRUE} -->
-<!-- # # Get layer name from shape file -->
-<!-- # mdc_ShapeFile <- paste0(projDir,"/airsage_zones/MDC_Taz.shp") -->
-<!-- # layerName <- strsplit(strsplit(mdc_ShapeFile,"[.]")[[1]],"/")[[1]][2] -->
-<!-- # # Add census shape files -->
-<!-- # mdcShape <- readOGR(mdc_ShapeFile, layer = layerName, verbose = FALSE) -->
-<!-- # -->
-<!-- # map <- leaflet() %>% -->
-<!-- #   # Base Map -->
-<!-- #   addProviderTiles("Stamen.Toner",group = "Stamen") %>% -->
-<!-- #   addTiles(group = "OSM") %>% -->
-<!-- #   setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>% -->
-<!-- #   addTiles %>% -->
-<!-- #   addPolygons(data = mdcShape, group = "tracts") -->
-<!-- # -->
-<!-- # map -->
-<!-- # ``` -->
-
-
-***
-
-### 3. Read Census ACS Data for 2014
-```{r, echo = TRUE}
-
-# Get layer name from shape file
-layerName <- strsplit(strsplit(acs_shapeFile,"[.]")[[1]],"/")[[1]][2]
-# Add census shape files
-acsShape <- readOGR(paste0(projDir,"/",acs_shapeFile), layer = layerName, verbose = FALSE)
-
-map <- leaflet() %>%
-  # Base Map
-  addProviderTiles("Stamen.Toner",group = "Stamen") %>%
-  addTiles(group = "OSM") %>%
-  setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
-  addTiles %>%
-  addPolygons(data = acsShape, group = "acs_data")
-    
-map
-```
 
 
