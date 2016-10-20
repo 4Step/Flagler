@@ -1,0 +1,28 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1476941634784.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "2CED4DF5",
+    "lastKnownWriteTime" : 4294967302,
+    "last_content_update" : 1476941634784,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "uza7qegib5",
+        "caption" : "acsData",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=acsData&cache_key=uza7qegib5",
+        "displayedObservations" : 519,
+        "environment" : "",
+        "object" : "acsData",
+        "totalObservations" : 519,
+        "variables" : 22
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

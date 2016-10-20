@@ -1,0 +1,14 @@
+base
+tidyr
+dplyr
+knitr
+leaflet
+sp
+rgdal
+htmltools
+readr
+readxl
+chorddiag
+maptools
+PBSmapping
+geosphere

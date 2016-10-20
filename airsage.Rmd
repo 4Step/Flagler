@@ -2,12 +2,14 @@
 title: "Flagler Data Review"
 author: "Amar Sarvepalli"
 date: "September 27, 2016"
-output: 
-  html_document: 
+output:
+  html_document:
     fig_caption: yes
     fig_width: 9
     keep_md: yes
     number_sections: yes
+    toc: yes
+  word_document:
     toc: yes
 ---
 
@@ -45,9 +47,11 @@ gtfsRoutesFile <- "GTFS/miami-dade-transit_20150626_0146/routes.txt"
 routeName <- "flagler"
 
 # Census ACS and CTPP data files
-ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
-acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
+# ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
+ctpp_zipFile <- "acs_data/MiamiDade_CTPP_A302103.zip"
+acs_shapeFile     <- "acs_data/Miami_Dade_Census_Tracts.shp"
 acs_airsage_dist <- "acs_data/tract_district_eqiv.csv"
+acs_demoFile <- "acs_data/selected_acs_data.csv"
 
 # APC data
 apc_dir <- "bus_apc_data/Flagler St BRTStudy APC Data Oct 2015_Xlsx"
@@ -62,7 +66,7 @@ jtw_trn_matrix <- "JTW_trn_trips_by_airsage_districts.csv"
 apc_trn_boardings <- "apc_trn_boardings.csv"
 ```
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, cache=TRUE}
 # load libraries
 library(tidyr)
 library(dplyr)
@@ -869,17 +873,19 @@ The first table shows ACS CTPP trips by mode. There are about a million work rel
 
 ```{r CTPP data, echo=FALSE, message=FALSE, warning=FALSE}
 # Census ACS and CTPP data files
-ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
-acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
-acs_airsage_dist <- "acs_data/tract_district_eqiv.csv"
+# ctpp_flowFile <- "acs_data/MiamiDade_CTPP_A302103.csv"
+# ctpp_flows <- read_csv(ctpp_flowFile, skip = 2)
+# acs_shapeFile     <- "acs_data/Tract_2014_Pop_Emp.shp"
+# acs_airsage_dist <- "acs_data/tract_district_eqiv.csv"
 
 # Read airsage districts
 acs_airsage <- read_csv(acs_airsage_dist)
 acs_airsage <- acs_airsage %>% select(NAME, district_e) %>%
                mutate("tract" = as.character(NAME))
 
-# Read ctpp flow data
-ctpp_flows <- read_csv(ctpp_flowFile, skip = 2)
+# Read ctpp flow data directly from zip (zip file same as csv file)
+ctpp_csvFile <- strsplit(ctpp_flowFile,"[/]")[[1]][2]
+ctpp_flows <- read_csv(unz(ctpp_zipFile, ctpp_csvFile), skip = 2)
 colnames(ctpp_flows) <- gsub(" ", "", colnames(ctpp_flows)) 
 
 # Clean data
@@ -1221,41 +1227,41 @@ hideGroup(c("Boardings", "Alightings"))
 
 
 *** 
-## 6. Census Data review (2000, 2010, 2015 and 2040)
-1. Review of households, population 
-2. Review of Employment
+## 6. Review of Census Data (2014)
+This section reviews census 2014 household, population, worker and employment data
+1. Review of households and population along the corridor
+2. Review of Employment and worker data along the corridor
 3. Review of zero car households
 4. Review of low income
 
-
-## 5. Review of Census Data
-### Review of Household, Population, Worker and Employment data
 The map below displays population, and household and employment densities. 
 
-```{r, echo=FALSE}
+```{r hh pop densities, echo=FALSE}
 
-# Get layer name from shape file
+
+# # Add census shape files
 layerName <- strsplit(strsplit(acs_shapeFile,"[.]")[[1]],"/")[[1]][2]
-# Add census shape files
 acsShape <- readOGR(paste0(projDir,"/",acs_shapeFile), layer = layerName, verbose = FALSE)
 
+# Append acs data to shape
+acsData <- read_csv(acs_demoFile, skip = 1)
+acsShape@data <- acsShape@data %>% left_join(acsData, by = c("AFFGEOID" = "Id"))
+
+# plot a tract map
 map <- leaflet() %>%
   # Base Map
   addProviderTiles("Stamen.Toner",group = "Stamen") %>%
   addTiles(group = "OSM") %>%
   setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
   addTiles %>%
-  addPolygons(data = acsShape, group = "acs_data")
-    
-map
-# download census data (from acs package - caution: corrupts dplr library)
- # acs_data <- acs.fetch (endyear = 2014, geo=geo.make(state="FL", county=c(86), tract="*"),
- #                      table.number="B08202")
+  addPolygons(
+    data = acsShape, group = "acs_data",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 3, color = "black",opacity = 0.5,
+    fill = TRUE, fillOpacity = 0.5,
+    fillColor = ~pal_pop(ALAND)
+  )  
 
 
-  # acs.lookup(dataset = "acs", endyear = 2014, keyword="Income")
- 
-     
 # Add  color pallets
 pal_hh <- colorNumeric(
   palette = "Blues",
@@ -1284,37 +1290,51 @@ map_hhPop <- map %>%
     fill = TRUE, fillOpacity = 0.5,
     fillColor = ~pal_hh(HHDEN)
   )  %>%  
-  addPolygons(
-    data = shape, group = "Pop Density",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_pop(POPDEN)
-  )  %>%
    
   addLegend(
     "bottomright",pal = pal_hh, values = shape$HHDEN,
      title = "HH Density"
    ) %>%
   
-  addLegend(
-    "bottomleft",pal = pal_pop, values = shape$POPDEN,
-    title = "Pop Density", layerId = 1
-  ) %>% 
-  
  addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "HH Density", "Pop Density"),
+  overlayGroups = c("Districts", "HH Density"),
   options = layersControlOptions(collapsed = FALSE)
  ) %>%
 
-hideGroup(c( "HH Density","Pop Density"))
+hideGroup(c( "Districts"))
 map_hhPop
+
+map_popDen <- map %>%
+  addPolygons(
+    data = shape, group = "Pop Density",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
+    fill = TRUE, fillOpacity = 0.5,
+    fillColor = ~pal_pop(POPDEN)
+  )  %>%
+  
+  addLegend(
+    "bottomleft",pal = pal_pop, values = shape$POPDEN,
+    title = "Pop Density", layerId = 1
+  ) %>%
+  
+  addLayersControl(
+  baseGroups = c("OSM","Stamen"),
+  overlayGroups = c("Districts", "Pop Density"),
+  options = layersControlOptions(collapsed = FALSE)
+ ) %>%
+
+hideGroup(c( "Districts"))
+
+map_popDen
 ```
 
 The map below displays employment and worker densities. The worker densities are the household workers which is different the employment data.
 
-```{r, echo = FALSE}
-map_workEmp <- map %>% 
+```{r emp worker density, echo=FALSE}
+
+# Plot Employment densities along the corrido
+map_EmpDen <- map %>% 
   
   addPolygons(
     data = shape, group = "Emp Density",smoothFactor = 0.5,
@@ -1323,6 +1343,22 @@ map_workEmp <- map %>%
     fillColor = ~pal_emp(EMPDEN)
   )  %>% 
   
+  addLegend(
+    "bottomleft",pal = pal_emp, values = shape$EMPDEN,
+    title = "Emp Density", layerId = 2
+  ) %>%
+  
+ addLayersControl(
+  baseGroups = c("OSM","Stamen"),
+  overlayGroups = c("Districts", "Emp Density"),
+  options = layersControlOptions(collapsed = FALSE)
+  ) %>% 
+  
+  hideGroup(c("Districts"))
+map_EmpDen
+
+# Plot Worker densities along the corridor
+map_workDen <- map %>% 
   addPolygons(
     data = shape, group = "Work Density",smoothFactor = 0.5,
     stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
@@ -1331,23 +1367,18 @@ map_workEmp <- map %>%
   ) %>% 
   
   addLegend(
-    "bottomleft",pal = pal_emp, values = shape$EMPDEN,
-    title = "Emp Density", layerId = 2
-  ) %>%
-  
-  addLegend(
     "bottomright",pal = pal_work, values = shape$WORKDEN,
      title = "Work Density"
    ) %>%
   
  addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "Work Density", "Emp Density"),
+  overlayGroups = c("Districts", "Work Density"),
   options = layersControlOptions(collapsed = FALSE)
   ) %>% 
   
-  hideGroup(c("Work Density", "Emp Density"))
-map_workEmp
+  hideGroup(c("Districts"))
+map_workDen
 ```
 
 

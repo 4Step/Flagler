@@ -25,7 +25,7 @@
 #              using a wild card or list will return an error
 
 # Author: Amar Sarvepalli (sarvepalli@pbworld.com, 01-24-2013)
-
+# modified for Miami-Dade County, FL (10-18-2016)
 #-------------------------------------------------------------------------------------------------
 # Load library
   library(rjson)
@@ -36,9 +36,9 @@
 # Census 
   devKey     <- "e2e7a5b05c688346094ae9a76cc92473137f1589"       # developer key
   census_URL <- "http://api.census.gov/data"                     # main url
-  year       <- "2011"                                           # acs year
+  year       <- "2014"                                           # acs year
   dataSet    <- "acs5"                                           # acs or sf1
-  state_id   <- "37"                                             # state                                             
+  state_id   <- "12"                                             # state                                             
   county_id  <- " "                                              # county: the API handles only one county at a time   
   tract_id   <- "*"                                              # either "*" to get all or "specify number"                                
 
@@ -59,13 +59,8 @@
   }
 
 
-# Get a list of counties in NC State
-  counties_in_NC <- "E:/Asheville/SurveyPilot/Counties_in_NC.csv"
-  county_list <- read.csv(counties_in_NC)
-  counties <- sprintf("%03d",unique(county_list$FIPS.Code))
-
 # Loop by counties
-  # counties <- c("21", "87", "89", "115", "175")
+  counties <- c("86")
   
   for(co in 1:length(counties)){
     county_id = counties[co]
@@ -94,6 +89,6 @@
     
     # Write output
     if(co== length(counites)) {
-       write.csv(all_counties,"E:\\Asheville\\subModels\\hh_sub_data.csv", row.names= FALSE)
+       write.csv(all_counties,"hh_sub_data.csv", row.names= FALSE)
     }
   } # end county
