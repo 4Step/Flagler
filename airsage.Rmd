@@ -14,18 +14,19 @@ output:
 ---
 
 ## Introduction
-This memo is divided into following sections:
+This document provides an indepth analysis of exisiting conditions of the Flagler Corridor. The analysis is divided into following sections:
 
-1) Airsage Data Files
-2) Review of Data
+1) Airsage Data Samples
+2) Review of Airsage Data
 3) AirSage OD Flows
 4) Review of ACS / CTPP JTW Flows
-5) Census socio-economic data (2000, 2010, 2015 and 2040)
-6) Review of APC data for Flagler
-7) Model validation (compare CTPP Trn Flows and AirSage to Model)
+5) Review of APC data for Flagler
+6) Census socio-economic data (2015)
 
-```{r user settings, echo=TRUE, cache=TRUE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 9.5)
+
+
+```{r user settings, echo=TRUE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 9.5, cache=TRUE)
 # User inputs:
 projDir         <- "/Users/amarsarvepalli/Desktop/github/Flagler"
 
@@ -39,7 +40,11 @@ airsage_Districts <- "airsage/airsarge_districts/district_equivalency.csv"
 
 # Define corridor districts
 Study_districts <- c(20:40)
-
+segments_1 <- c(35:40)
+Segments_2 <- c(30:34)
+Segments_3 <- c(22:23,26:29)
+Segments_4 <- c(19:21)
+  
 # Gtfs network
 gtfsShapesFile <- "GTFS/miami-dade-transit_20150626_0146/shapes.txt"
 gtfsTripsFile <- "GTFS/miami-dade-transit_20150626_0146/trips.txt"
@@ -128,8 +133,10 @@ The following are the list of files received from Airsage along with:
 4) percent of samples
 5) percent of trips
 
+
 ```{r read data, echo=FALSE, message=FALSE, warning=FALSE}
-  csvFiles <- dir(paste(projDir,"/airsage",sep=""), pattern = ".csv")
+  
+csvFiles <- dir(paste0("airsage/",sep=""), pattern = ".csv")
 
   for (c in 1:length(csvFiles)){
     data <- read.csv(paste0("airsage/",csvFiles[c]))
@@ -458,11 +465,11 @@ Tables below show the daily OD flows. In order to better understand the travel p
   kable(studyarea_flows,format.args = list(big.mark = ","), digits = 2)
   
   # generate chord diagram  
-  df <- remove_marginals(trips_by_OD)
-  m <- as.matrix(df)
-  dimnames(m) <- list(Origins = row.names(df), Destinations = row.names(df))
-  groupColors <-colorRampPalette(c("blue", "red", "green"))(20) 
-  chorddiag(m, groupColors = groupColors, groupnamePadding = 20, showTicks = FALSE)
+  # df <- remove_marginals(trips_by_OD)
+  # m <- as.matrix(df)
+  # dimnames(m) <- list(Origins = row.names(df), Destinations = row.names(df))
+  # groupColors <-colorRampPalette(c("blue", "red", "green"))(20) 
+  # chorddiag(m, groupColors = groupColors, groupnamePadding = 20, showTicks = FALSE)
 ``` 
 
 Plot of total daily Origins and Destinations to/from Study Area.
@@ -611,11 +618,11 @@ The following are the tables showing the peak trips. In order to better understa
   kable(studyarea_flows,format.args = list(big.mark = ","), digits = 2)
   
   # produce chord diagram  
-  df <- remove_marginals(trips_by_OD)
-  m <- as.matrix(df)
-  dimnames(m) <- list(Origins = row.names(df), Destinations = row.names(df))
-  groupColors <-  colorRampPalette(c("blue", "red", "green"))(20) 
-  chorddiag(m, groupColors = groupColors, groupnamePadding = 20, showTicks = FALSE)
+  # df <- remove_marginals(trips_by_OD)
+  # m <- as.matrix(df)
+  # dimnames(m) <- list(Origins = row.names(df), Destinations = row.names(df))
+  # groupColors <-  colorRampPalette(c("blue", "red", "green"))(20) 
+  # chorddiag(m, groupColors = groupColors, groupnamePadding = 20, showTicks = FALSE)
   
 ```
 
@@ -884,7 +891,7 @@ acs_airsage <- acs_airsage %>% select(NAME, district_e) %>%
                mutate("tract" = as.character(NAME))
 
 # Read ctpp flow data directly from zip (zip file same as csv file)
-ctpp_csvFile <- strsplit(ctpp_flowFile,"[/]")[[1]][2]
+ctpp_csvFile <- paste0(strsplit(strsplit(ctpp_zipFile,"[.]")[[1]],"/")[[1]][2],".csv")
 ctpp_flows <- read_csv(unz(ctpp_zipFile, ctpp_csvFile), skip = 2)
 colnames(ctpp_flows) <- gsub(" ", "", colnames(ctpp_flows)) 
 
@@ -1187,7 +1194,7 @@ The APC data was collected for 22 routes in the study area. The table shows list
  # Map boardings by stops
  factpal <- colorFactor(topo.colors(22), apc_data$ROUTE)
  
- map %>%
+ map_apc <- map %>%
     addCircles(
     data = apc_data, 
     lng = ~LONG, lat = ~LAT, weight = 1, 
@@ -1219,167 +1226,270 @@ The APC data was collected for 22 routes in the study area. The table shows list
  ) %>%
 
 hideGroup(c("Boardings", "Alightings"))
-
+map_apc
    
- 
+rm(map)
 
 ```
 
 
 *** 
-## 6. Review of Census Data (2014)
-This section reviews census 2014 household, population, worker and employment data
-1. Review of households and population along the corridor
-2. Review of Employment and worker data along the corridor
-3. Review of zero car households
-4. Review of low income
+## 6. Review of Census Data (2015)
+This section reviews census 2015 households, population, workers, number of zero auto and low income households. 
 
-The map below displays population, and household and employment densities. 
+There are about 84,000 households and 250,000 persons in the study area. The downtown districts 26 shows the highest number of households and population among the study area districts.   
 
-```{r hh pop densities, echo=FALSE}
+below shows population, households, workers
 
 
-# # Add census shape files
+
+```{r acs data, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Add census shape files
 layerName <- strsplit(strsplit(acs_shapeFile,"[.]")[[1]],"/")[[1]][2]
 acsShape <- readOGR(paste0(projDir,"/",acs_shapeFile), layer = layerName, verbose = FALSE)
 
 # Append acs data to shape
 acsData <- read_csv(acs_demoFile, skip = 1)
+acs_airsage <- read_csv(acs_airsage_dist)
+acs_airsage <- acs_airsage %>% select(GEO_ID, district_e)
+
+# re-write this to do all at once (via regex)
+colnames(acsData) <- gsub( " ", "", colnames(acsData) )
+colnames(acsData) <- gsub( ",", "", colnames(acsData) )
+colnames(acsData) <- gsub( "\\(", "", colnames(acsData) )
+colnames(acsData) <- gsub( "\\)", "", colnames(acsData) )
+colnames(acsData) <- gsub( "\\$", "x", colnames(acsData) )
+
+acsData <- acsData %>% mutate(low_inc = as.numeric(x10000tox14999) + as.numeric(x15000tox24999) + as.numeric(x25000tox34999))
+acsData[is.na(acsData)] <- 0
+acsData <- acsData %>% mutate(Medianincomedollars = as.numeric(Medianincomedollars))
+ 
+# join data
 acsShape@data <- acsShape@data %>% left_join(acsData, by = c("AFFGEOID" = "Id"))
 
+# Get demographics across flagler districts 
+acsData <- acsData %>% left_join(acs_airsage,  c("Id" = "GEO_ID"))
+study_acsData <- acsData %>% filter(district_e %in% Study_districts) %>%
+                   group_by(district_e) %>% 
+                   mutate(low_inchh = low_inc * Households) %>%
+                   summarize(hh = sum(Households),
+                             pop = sum(Population),
+                             worker = sum(workers),
+                             zeroAutoPct = 100* sum(Zero_auto)/hh,
+                             lowIncPct = sum(low_inchh)/hh,
+                             MedInc = median(Medianincomedollars)) %>%
+                  add_marginals() %>% 
+                  select(-total)
+                  
+ print(kable(study_acsData,format.args = list(big.mark = ","), digits = 0)) 
+
+```
+
+###### The following plots show the 2015 data at tract level for the corridor.
+
+  1. Review of households and population along the corridor
+  2. Review of Employment and worker data along the corridor
+  3. Review of zero car households
+  4. Review of low income
+
+
+
+```{r plot tracts, echo = FALSE, message=FALSE, warning=FALSE}
+
 # plot a tract map
-map <- leaflet() %>%
+map_tract <- leaflet() %>%
   # Base Map
   addProviderTiles("Stamen.Toner",group = "Stamen") %>%
   addTiles(group = "OSM") %>%
-  setView(lng = -80.1918, lat = 25.7617, zoom = 10) %>%
+  setView(lng = -80.27990, lat = 25.77110, zoom = 12) %>%
   addTiles %>%
+  # add district shape files
   addPolygons(
-    data = acsShape, group = "acs_data",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "black",opacity = 0.5,
-    fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_pop(ALAND)
-  )  
-
-
+    data = shape, group = "Districts", smoothFactor = 0.5,
+    stroke = TRUE,  weight = 3, color = "black",opacity = 1.0,
+    fill = FALSE)   %>% 
+  # Add district names
+  addCircleMarkers(data = shape, lng = shape$X, lat = shape$Y, 
+                   weight = 1, label =   ~as.character(shape$Districts), 
+                   radius = 1, labelOptions = labelOptions(noHide = T),  
+                   group = "Districts Labels")
+ 
 # Add  color pallets
 pal_hh <- colorNumeric(
   palette = "Blues",
-  domain = shape$HHDEN
+  domain = acsShape$Households
 )
 
 pal_pop <- colorNumeric(
   palette = "Reds",
-  domain = shape$POPDEN
+  domain = acsShape$Population
 )
 
-pal_work <- colorNumeric(
-  palette = "Blues",
-  domain = shape$WORKDEN
-)
+```
 
-pal_emp <- colorNumeric(
-  palette = "Reds",
-  domain = shape$EMPDEN
-)
+###### The map below displays households by census tracts
+The census tract level data shown on the plot displays large number of households and population clusters along Flagler Corridor in districts 30 to 36.
 
-map_hhPop <- map %>%
+
+```{r plot hh, echo = FALSE, message=FALSE, warning=FALSE}
+
+map_hh <- map_tract %>%
   addPolygons(
-    data = shape, group = "HH Density", smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
+    data = acsShape, group = "Households", smoothFactor = 0.5,
+    stroke = TRUE,  weight = 1, color = "grey",opacity = 0.5,
     fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_hh(HHDEN)
+    fillColor = ~pal_hh(Households)
   )  %>%  
    
   addLegend(
-    "bottomright",pal = pal_hh, values = shape$HHDEN,
-     title = "HH Density"
+    "bottomright",pal = pal_hh, values = acsShape$Households,
+     title = "Households"
    ) %>%
   
  addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "HH Density"),
+  overlayGroups = c("Districts","Districts Labels", "Households"),
   options = layersControlOptions(collapsed = FALSE)
- ) %>%
+ )
 
-hideGroup(c( "Districts"))
-map_hhPop
+map_hh
+```
 
-map_popDen <- map %>%
+Plot of population by census tracts along the corridor:
+This closely follows the number of households by tract.
+
+```{r plot pop, echo = FALSE, message=FALSE, warning=FALSE}
+map_pop <- map_tract %>%
   addPolygons(
-    data = shape, group = "Pop Density",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
+    data = acsShape, group = "Population",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 1, color = "grey",opacity = 0.5,
     fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_pop(POPDEN)
+    fillColor = ~pal_pop(Population)
   )  %>%
   
   addLegend(
-    "bottomleft",pal = pal_pop, values = shape$POPDEN,
-    title = "Pop Density", layerId = 1
+    "bottomleft",pal = pal_pop, values = acsShape$Population,
+    title = "Population", layerId = 1
   ) %>%
   
   addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "Pop Density"),
+  overlayGroups = c("Districts", "Districts Labels", "Population"),
   options = layersControlOptions(collapsed = FALSE)
- ) %>%
+ )
 
-hideGroup(c( "Districts"))
-
-map_popDen
+map_pop
 ```
 
-The map below displays employment and worker densities. The worker densities are the household workers which is different the employment data.
+Plot of household workers:
+Number of workers in the household proportionaltely follows the population and total households by tracts. There are also large number of workers along the corridor. 
 
-```{r emp worker density, echo=FALSE}
+```{r worker, echo=FALSE, message=FALSE, warning=FALSE}
+
+pal_work <- colorNumeric(
+  palette = "Blues",
+  domain = acsShape$workers
+)
+
+pal_auto <- colorNumeric(
+  palette = "Reds",
+  domain = acsShape$Zero_auto
+)
+
+pal_inc <- colorNumeric(
+  palette = "Blues",
+  domain = acsShape$Medianincomedollars
+)
 
 # Plot Employment densities along the corrido
-map_EmpDen <- map %>% 
+map_Workers <- map_tract %>% 
   
   addPolygons(
-    data = shape, group = "Emp Density",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
+    data = acsShape, group = "Workers",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 1, color = "grey",opacity = 0.5,
     fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_emp(EMPDEN)
+    fillColor = ~pal_work(workers)
   )  %>% 
   
   addLegend(
-    "bottomleft",pal = pal_emp, values = shape$EMPDEN,
-    title = "Emp Density", layerId = 2
+    "bottomleft",pal = pal_work, values = acsShape$workers,
+    title = "Workers", layerId = 2
   ) %>%
   
  addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "Emp Density"),
+  overlayGroups = c("Districts", "Districts Labels", "Workers"),
   options = layersControlOptions(collapsed = FALSE)
-  ) %>% 
+  )
   
-  hideGroup(c("Districts"))
-map_EmpDen
+map_Workers
 
-# Plot Worker densities along the corridor
-map_workDen <- map %>% 
+```
+
+Plot of zero car households:
+A higher percent of zero car households are observed in the downtown districts from district 26 to 28. The census tracts along the Flagler Corridor show very low percent of zero car households, implying vast majority of the residents drive to work.
+
+```{r zero auto, echo=FALSE, message=FALSE, warning=FALSE}
+# Plot zero car households along the corridor
+map_zeroAuto <- map_tract %>% 
   addPolygons(
-    data = shape, group = "Work Density",smoothFactor = 0.5,
-    stroke = TRUE,  weight = 3, color = "grey",opacity = 0.5,
+    data = acsShape, group = "Zero Car",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 1, color = "grey",opacity = 0.5,
     fill = TRUE, fillOpacity = 0.5,
-    fillColor = ~pal_work(WORKDEN)
+    fillColor = ~pal_auto(Zero_auto)
   ) %>% 
   
   addLegend(
-    "bottomright",pal = pal_work, values = shape$WORKDEN,
-     title = "Work Density"
+    "bottomright",pal = pal_auto, values = acsShape$Zero_auto,
+     title = "Zero Auto"
    ) %>%
   
  addLayersControl(
   baseGroups = c("OSM","Stamen"),
-  overlayGroups = c("Districts", "Work Density"),
+  overlayGroups = c("Districts", "Districts Labels", "Zero auto"),
   options = layersControlOptions(collapsed = FALSE)
+  )
+  
+map_zeroAuto
+```
+
+Plot of median income households:
+Most of the tracts along the corridor show a median income of less than $50,000. A significant number of tracts show median income of about $25,000 along the corridor. 
+
+```{r median income, echo=FALSE, message=FALSE, warning=FALSE}
+# Plot median hh incomes along the corridor
+map_medInc <- map_tract %>% 
+  addPolygons(
+    data = acsShape, group = "Med HH Income",smoothFactor = 0.5,
+    stroke = TRUE,  weight = 1, color = "grey",opacity = 0.5,
+    fill = TRUE, fillOpacity = 0.5,
+    fillColor = ~pal_inc(Medianincomedollars),
+    popup = ~paste0("Median Income: ", Medianincomedollars)
   ) %>% 
   
-  hideGroup(c("Districts"))
-map_workDen
+  addLegend(
+    "bottomright",pal = pal_inc, values = acsShape$Medianincomedollars,
+     title = "Med HH Income"
+   ) %>%
+  
+ addLayersControl(
+  baseGroups = c("OSM","Stamen"),
+  overlayGroups = c("Districts", "Districts Labels", "Med HH Income"),
+  options = layersControlOptions(collapsed = FALSE)
+  )
+  
+map_medInc
+
 ```
+
+### 7) Market Analysis:
+
+#### Demographics
+1. Large number of resident households and population along the corridor, most with high densities along the corridor. 
+2. Worker population is proprtional to households and population, meaning large worker concentrations along the corridor.
+3. Zero car households are predomint in the downtown districts and most of the residents in the corridor drive to work. Most of the downtown residents work in the downtown and rely upon transit to get to other places.
+4. From west to east of the corridor the median income by census tracts decreases from $65,000 to $16,000 in the downtown.
 
 
 

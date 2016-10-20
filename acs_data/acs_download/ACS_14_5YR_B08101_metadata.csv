@@ -1,0 +1,115 @@
+GEO.id,Id
+GEO.id2,Id2
+GEO.display-label,Geography
+HD01_VD01,Estimate; Total:
+HD02_VD01,Margin of Error; Total:
+HD01_VD03,Estimate; Total: - 16 to 19 years
+HD02_VD03,Margin of Error; Total: - 16 to 19 years
+HD01_VD04,Estimate; Total: - 20 to 24 years
+HD02_VD04,Margin of Error; Total: - 20 to 24 years
+HD01_VD05,Estimate; Total: - 25 to 44 years
+HD02_VD05,Margin of Error; Total: - 25 to 44 years
+HD01_VD06,Estimate; Total: - 45 to 54 years
+HD02_VD06,Margin of Error; Total: - 45 to 54 years
+HD01_VD07,Estimate; Total: - 55 to 59 years
+HD02_VD07,Margin of Error; Total: - 55 to 59 years
+HD01_VD08,Estimate; Total: - 60 to 64 years
+HD02_VD08,Margin of Error; Total: - 60 to 64 years
+HD01_VD09,Estimate; Total: - 65 years and over
+HD02_VD09,Margin of Error; Total: - 65 years and over
+HD01_VD10,"Estimate; Total: - Car, truck, or van - drove alone:"
+HD02_VD10,"Margin of Error; Total: - Car, truck, or van - drove alone:"
+HD01_VD11,"Estimate; Total: - Car, truck, or van - drove alone: - 16 to 19 years"
+HD02_VD11,"Margin of Error; Total: - Car, truck, or van - drove alone: - 16 to 19 years"
+HD01_VD12,"Estimate; Total: - Car, truck, or van - drove alone: - 20 to 24 years"
+HD02_VD12,"Margin of Error; Total: - Car, truck, or van - drove alone: - 20 to 24 years"
+HD01_VD13,"Estimate; Total: - Car, truck, or van - drove alone: - 25 to 44 years"
+HD02_VD13,"Margin of Error; Total: - Car, truck, or van - drove alone: - 25 to 44 years"
+HD01_VD14,"Estimate; Total: - Car, truck, or van - drove alone: - 45 to 54 years"
+HD02_VD14,"Margin of Error; Total: - Car, truck, or van - drove alone: - 45 to 54 years"
+HD01_VD15,"Estimate; Total: - Car, truck, or van - drove alone: - 55 to 59 years"
+HD02_VD15,"Margin of Error; Total: - Car, truck, or van - drove alone: - 55 to 59 years"
+HD01_VD16,"Estimate; Total: - Car, truck, or van - drove alone: - 60 to 64 years"
+HD02_VD16,"Margin of Error; Total: - Car, truck, or van - drove alone: - 60 to 64 years"
+HD01_VD17,"Estimate; Total: - Car, truck, or van - drove alone: - 65 years and over"
+HD02_VD17,"Margin of Error; Total: - Car, truck, or van - drove alone: - 65 years and over"
+HD01_VD18,"Estimate; Total: - Car, truck, or van - carpooled:"
+HD02_VD18,"Margin of Error; Total: - Car, truck, or van - carpooled:"
+HD01_VD19,"Estimate; Total: - Car, truck, or van - carpooled: - 16 to 19 years"
+HD02_VD19,"Margin of Error; Total: - Car, truck, or van - carpooled: - 16 to 19 years"
+HD01_VD20,"Estimate; Total: - Car, truck, or van - carpooled: - 20 to 24 years"
+HD02_VD20,"Margin of Error; Total: - Car, truck, or van - carpooled: - 20 to 24 years"
+HD01_VD21,"Estimate; Total: - Car, truck, or van - carpooled: - 25 to 44 years"
+HD02_VD21,"Margin of Error; Total: - Car, truck, or van - carpooled: - 25 to 44 years"
+HD01_VD22,"Estimate; Total: - Car, truck, or van - carpooled: - 45 to 54 years"
+HD02_VD22,"Margin of Error; Total: - Car, truck, or van - carpooled: - 45 to 54 years"
+HD01_VD23,"Estimate; Total: - Car, truck, or van - carpooled: - 55 to 59 years"
+HD02_VD23,"Margin of Error; Total: - Car, truck, or van - carpooled: - 55 to 59 years"
+HD01_VD24,"Estimate; Total: - Car, truck, or van - carpooled: - 60 to 64 years"
+HD02_VD24,"Margin of Error; Total: - Car, truck, or van - carpooled: - 60 to 64 years"
+HD01_VD25,"Estimate; Total: - Car, truck, or van - carpooled: - 65 years and over"
+HD02_VD25,"Margin of Error; Total: - Car, truck, or van - carpooled: - 65 years and over"
+HD01_VD26,Estimate; Total: - Public transportation (excluding taxicab):
+HD02_VD26,Margin of Error; Total: - Public transportation (excluding taxicab):
+HD01_VD27,Estimate; Total: - Public transportation (excluding taxicab): - 16 to 19 years
+HD02_VD27,Margin of Error; Total: - Public transportation (excluding taxicab): - 16 to 19 years
+HD01_VD28,Estimate; Total: - Public transportation (excluding taxicab): - 20 to 24 years
+HD02_VD28,Margin of Error; Total: - Public transportation (excluding taxicab): - 20 to 24 years
+HD01_VD29,Estimate; Total: - Public transportation (excluding taxicab): - 25 to 44 years
+HD02_VD29,Margin of Error; Total: - Public transportation (excluding taxicab): - 25 to 44 years
+HD01_VD30,Estimate; Total: - Public transportation (excluding taxicab): - 45 to 54 years
+HD02_VD30,Margin of Error; Total: - Public transportation (excluding taxicab): - 45 to 54 years
+HD01_VD31,Estimate; Total: - Public transportation (excluding taxicab): - 55 to 59 years
+HD02_VD31,Margin of Error; Total: - Public transportation (excluding taxicab): - 55 to 59 years
+HD01_VD32,Estimate; Total: - Public transportation (excluding taxicab): - 60 to 64 years
+HD02_VD32,Margin of Error; Total: - Public transportation (excluding taxicab): - 60 to 64 years
+HD01_VD33,Estimate; Total: - Public transportation (excluding taxicab): - 65 years and over
+HD02_VD33,Margin of Error; Total: - Public transportation (excluding taxicab): - 65 years and over
+HD01_VD34,Estimate; Total: - Walked:
+HD02_VD34,Margin of Error; Total: - Walked:
+HD01_VD35,Estimate; Total: - Walked: - 16 to 19 years
+HD02_VD35,Margin of Error; Total: - Walked: - 16 to 19 years
+HD01_VD36,Estimate; Total: - Walked: - 20 to 24 years
+HD02_VD36,Margin of Error; Total: - Walked: - 20 to 24 years
+HD01_VD37,Estimate; Total: - Walked: - 25 to 44 years
+HD02_VD37,Margin of Error; Total: - Walked: - 25 to 44 years
+HD01_VD38,Estimate; Total: - Walked: - 45 to 54 years
+HD02_VD38,Margin of Error; Total: - Walked: - 45 to 54 years
+HD01_VD39,Estimate; Total: - Walked: - 55 to 59 years
+HD02_VD39,Margin of Error; Total: - Walked: - 55 to 59 years
+HD01_VD40,Estimate; Total: - Walked: - 60 to 64 years
+HD02_VD40,Margin of Error; Total: - Walked: - 60 to 64 years
+HD01_VD41,Estimate; Total: - Walked: - 65 years and over
+HD02_VD41,Margin of Error; Total: - Walked: - 65 years and over
+HD01_VD42,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means:"
+HD02_VD42,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means:"
+HD01_VD43,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 16 to 19 years"
+HD02_VD43,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 16 to 19 years"
+HD01_VD44,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 20 to 24 years"
+HD02_VD44,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 20 to 24 years"
+HD01_VD45,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 25 to 44 years"
+HD02_VD45,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 25 to 44 years"
+HD01_VD46,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 45 to 54 years"
+HD02_VD46,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 45 to 54 years"
+HD01_VD47,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 55 to 59 years"
+HD02_VD47,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 55 to 59 years"
+HD01_VD48,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 60 to 64 years"
+HD02_VD48,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 60 to 64 years"
+HD01_VD49,"Estimate; Total: - Taxicab, motorcycle, bicycle, or other means: - 65 years and over"
+HD02_VD49,"Margin of Error; Total: - Taxicab, motorcycle, bicycle, or other means: - 65 years and over"
+HD01_VD50,Estimate; Total: - Worked at home:
+HD02_VD50,Margin of Error; Total: - Worked at home:
+HD01_VD51,Estimate; Total: - Worked at home: - 16 to 19 years
+HD02_VD51,Margin of Error; Total: - Worked at home: - 16 to 19 years
+HD01_VD52,Estimate; Total: - Worked at home: - 20 to 24 years
+HD02_VD52,Margin of Error; Total: - Worked at home: - 20 to 24 years
+HD01_VD53,Estimate; Total: - Worked at home: - 25 to 44 years
+HD02_VD53,Margin of Error; Total: - Worked at home: - 25 to 44 years
+HD01_VD54,Estimate; Total: - Worked at home: - 45 to 54 years
+HD02_VD54,Margin of Error; Total: - Worked at home: - 45 to 54 years
+HD01_VD55,Estimate; Total: - Worked at home: - 55 to 59 years
+HD02_VD55,Margin of Error; Total: - Worked at home: - 55 to 59 years
+HD01_VD56,Estimate; Total: - Worked at home: - 60 to 64 years
+HD02_VD56,Margin of Error; Total: - Worked at home: - 60 to 64 years
+HD01_VD57,Estimate; Total: - Worked at home: - 65 years and over
+HD02_VD57,Margin of Error; Total: - Worked at home: - 65 years and over
